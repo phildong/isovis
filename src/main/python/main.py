@@ -38,10 +38,10 @@ class MainWindow(QMainWindow):
         self.resize(700, 500)
         self.setWindowTitle("Isomap Vispy Viewer")
         # load data
-        self.df = pd.read_feather(os.path.join(FPATH, CONFIG["df_path"]))
+        df = pd.read_feather(os.path.join(FPATH, CONFIG["df_path"]))
         # meta widgets
         layout_meta = QVBoxLayout()
-        self.metas = {d: self.df[d].unique() for d in CONFIG["meta_dims"]}
+        self.metas = {d: df[d].unique() for d in CONFIG["meta_dims"]}
         self.meta = {d: v[0] for d, v in self.metas.items()}
         for dim, vals in self.metas.items():
             widget = QHBoxLayout()
@@ -53,12 +53,9 @@ class MainWindow(QMainWindow):
             )
             widget.addWidget(cbx)
             layout_meta.addLayout(widget)
+        self.df = df.set_index(list(self.meta.keys())).sort_index()
         # vispy
-        data = (
-            self.df.set_index(list(self.meta.keys()))
-            .loc[tuple(self.meta.values())]
-            .reset_index()
-        )
+        data = self.df.loc[tuple(self.meta.values())].copy()
         self.canvas = isoVis(data=data)
         self.canvas.create_native()
         self.canvas.native.setParent(self)
@@ -74,11 +71,7 @@ class MainWindow(QMainWindow):
 
     def meta_change(self, lab, dim):
         self.meta[dim] = lab
-        data = (
-            self.df.set_index(list(self.meta.keys()))
-            .loc[tuple(self.meta.values())]
-            .reset_index()
-        )
+        data = self.df.loc[tuple(self.meta.values())].copy()
         self.layout_master.removeWidget(self.canvas.native)
         self.canvas.native.close()
         self.canvas = isoVis(data=data)
