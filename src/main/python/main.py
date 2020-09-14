@@ -89,17 +89,17 @@ class MainWindow(QMainWindow):
         layout_player.addWidget(self.ply_button)
         layout_player.addWidget(self.slider)
         # class
-        widget_class = QComboBox()
-        widget_class.addItems(
+        self.widget_class = QComboBox()
+        self.widget_class.addItems(
             ["all"] + self.data[CONFIG["col_names"]["class"]].unique().tolist()
         )
-        widget_class.setCurrentIndex(0)
-        self.subfm = self.data[CONFIG["col_names"]["frame"]]
-        widget_class.currentTextChanged.connect(self.class_change)
+        self.widget_class.setCurrentIndex(0)
+        self.subfm = self.data.index
+        self.widget_class.currentTextChanged.connect(self.class_change)
         lab_class = QLabel("class")
         layout_class = QHBoxLayout()
         layout_class.addWidget(lab_class)
-        layout_class.addWidget(widget_class)
+        layout_class.addWidget(self.widget_class)
         # master layout
         self.layout_master = QGridLayout()
         self.layout_master.addWidget(self.canvas.native, 0, 0)
@@ -116,19 +116,34 @@ class MainWindow(QMainWindow):
 
     def meta_change(self, lab, dim):
         self.meta[dim] = lab
-        data = (
+        self.data = (
             self.df.loc[tuple(self.meta.values())]
             .copy()
             .reset_index(drop=True)
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
+        # vispy
         self.layout_master.removeWidget(self.canvas.native)
         self.canvas.native.close()
-        self.canvas = isoVis(data=data)
+        self.canvas = isoVis(data=self.data)
         self.canvas.create_native()
         self.canvas.native.setParent(self)
         self.layout_master.addWidget(self.canvas.native, 0, 0)
+        # update subfm and class
+        self.subfm = self.data.index
+        self.widget_class.clear()
+        self.widget_class.addItems(
+            ["all"] + self.data[CONFIG["col_names"]["class"]].unique().tolist()
+        )
+        self.widget_class.setCurrentIndex(0)
+        # update slider
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(self.data.index.max())
+        self.slider.setSingleStep(1)
+        self.slider.setValue(0)
+        self.slider.valueChanged.disconnect()
+        self.slider.valueChanged.connect(self.canvas.fm_change)
 
     def play(self):
         if self.ply_button.isChecked():
@@ -153,7 +168,7 @@ class MainWindow(QMainWindow):
         self.slider.setValue(nxtfm)
 
     def class_change(self, class_lab):
-        if class_lab == "all":
+        if class_lab == "all" or class_lab == "":
             self.subfm = self.data.index
         else:
             self.subfm = self.data[
