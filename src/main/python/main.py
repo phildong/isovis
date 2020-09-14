@@ -2,8 +2,10 @@ import os
 import sys
 import json
 import qdarkstyle
+import re
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 from itertools import cycle
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
@@ -62,6 +64,25 @@ class MainWindow(QMainWindow):
             widget.addWidget(cbx)
             layout_meta.addLayout(widget)
         self.df = df.set_index(list(self.meta.keys())).sort_index()
+        # load video
+        regex = re.compile(os.path.join(*CONFIG["vid_regex"]))
+        flist = list(
+            filter(
+                bool,
+                [
+                    regex.search(str(p.relative_to(CONFIG["vid_root"])))
+                    for p in Path(CONFIG["vid_root"]).rglob("*")
+                ],
+            )
+        )
+        fdf = pd.DataFrame(
+            [
+                [f.group(d) for d in CONFIG["meta_dims"]]
+                + [os.path.join(CONFIG["vid_root"], f.string)]
+                for f in flist
+            ],
+            columns=CONFIG["meta_dims"] + ["fpath"],
+        )
         # vispy
         self.data = (
             self.df.loc[tuple(self.meta.values())]

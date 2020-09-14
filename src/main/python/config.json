@@ -2,5 +2,10 @@
   "df_path": "isomap.feather",
   "meta_dims": ["animal", "session"],
   "col_names": { "class": "class_iso", "frame": "frame" },
-  "fps": 10
+  "fps": 10,
+  "vid_root": "/path/to/vid",
+  "vid_regex": [
+    "(?P<session>.*)",
+    "\\d{6}_SEFL3_.*_(?P<animal>[^\\(]*)\\(?\\d{0,2}\\)?\\.wmv$"
+  ]
 }
