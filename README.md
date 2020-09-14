@@ -4,5 +4,6 @@ a simple tool to visualize 3d scatter of neural activities together with behavio
 # installation
 ```bash
 conda create -n isovis -c conda-forge -y python=3.6 vispy pandas numpy pillow qdarkstyle pyqt bokeh
+conda activate isovis
 pip install fbs
 ```
