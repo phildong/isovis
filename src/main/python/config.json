@@ -1,5 +1,6 @@
 {
   "df_path": "isomap.feather",
   "meta_dims": ["animal", "session"],
-  "col_names": { "class": "class_iso" }
+  "col_names": { "class": "class_iso", "frame": "frame" },
+  "fps": 10
 }
