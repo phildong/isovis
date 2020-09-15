@@ -229,9 +229,10 @@ class isoVis(scene.SceneCanvas):
         self.grid.add_widget(sct_title, row=0, col=0)
         self.sct_view = self.grid.add_view(row=1, col=0, border_color="white")
         self.sct_data = data
+        cn = CONFIG["col_names"]
         self.mks = scene.Markers(
             parent=self.sct_view.scene,
-            pos=self.sct_data[["comp0", "comp1", "comp2"]].values,
+            pos=self.sct_data[[cn["x"], cn["y"], cn["z"]]].values,
             face_color=ColorArray(list(self.sct_data["cweak"].values)),
             size=5,
         )
@@ -239,7 +240,7 @@ class isoVis(scene.SceneCanvas):
         self.cur_mks = scene.Markers(
             parent=self.sct_view.scene,
             pos=np.expand_dims(
-                self.sct_data.iloc[0, :][["comp0", "comp1", "comp2"]].values, axis=0
+                self.sct_data.iloc[0, :][[cn["x"], cn["y"], cn["z"]]].values, axis=0
             ),
             face_color=self.sct_data.iloc[0, :]["cstrong"],
         )
@@ -260,9 +261,10 @@ class isoVis(scene.SceneCanvas):
         self.im_view.camera.aspect = 1
 
     def fm_change(self, ifm):
+        cn = CONFIG["col_names"]
         self.cur_mks.set_data(
             pos=np.expand_dims(
-                self.sct_data.loc[ifm, ["comp0", "comp1", "comp2"]].values,
+                self.sct_data.loc[ifm, [cn["x"], cn["y"], cn["z"]]].values,
                 axis=0,
             ),
             face_color=self.sct_data.loc[ifm, "cstrong"],

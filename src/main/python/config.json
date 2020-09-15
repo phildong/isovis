@@ -1,7 +1,13 @@
 {
   "df_path": "isomap.feather",
   "meta_dims": ["animal", "session"],
-  "col_names": { "class": "class_iso", "frame": "frame" },
+  "col_names": {
+    "class": "class_iso",
+    "frame": "frame",
+    "x": "comp0",
+    "y": "comp1",
+    "z": "comp2"
+  },
   "height": 540,
   "width": 1280,
   "fps": 10,
