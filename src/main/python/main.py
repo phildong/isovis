@@ -96,7 +96,7 @@ class MainWindow(QMainWindow):
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
-        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"][0])
+        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"])
         self.canvas = isoVis(
             data=self.data, vid=self.vid, size=(CONFIG["width"], CONFIG["height"])
         )
@@ -152,7 +152,7 @@ class MainWindow(QMainWindow):
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
-        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"][0])
+        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"])
         # vispy
         self.layout_master.removeWidget(self.canvas.native)
         self.canvas.native.close()
