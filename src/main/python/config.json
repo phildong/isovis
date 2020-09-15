@@ -2,6 +2,8 @@
   "df_path": "isomap.feather",
   "meta_dims": ["animal", "session"],
   "col_names": { "class": "class_iso", "frame": "frame" },
+  "height": 540,
+  "width": 1280,
   "fps": 10,
   "vid_root": "/path/to/vid",
   "vid_regex": [

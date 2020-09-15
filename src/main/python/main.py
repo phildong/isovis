@@ -3,6 +3,7 @@ import sys
 import json
 import qdarkstyle
 import re
+import pims
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -38,7 +39,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         # init
         QMainWindow.__init__(self)
-        self.resize(700, 500)
+        self.resize(CONFIG["width"], CONFIG["height"])
         self.setWindowTitle("Isomap Vispy Viewer")
         # playing timer
         self.isPlaying = False
@@ -75,13 +76,17 @@ class MainWindow(QMainWindow):
                 ],
             )
         )
-        fdf = pd.DataFrame(
-            [
-                [f.group(d) for d in CONFIG["meta_dims"]]
-                + [os.path.join(CONFIG["vid_root"], f.string)]
-                for f in flist
-            ],
-            columns=CONFIG["meta_dims"] + ["fpath"],
+        self.fdf = (
+            pd.DataFrame(
+                [
+                    [f.group(d) for d in CONFIG["meta_dims"]]
+                    + [os.path.join(CONFIG["vid_root"], f.string)]
+                    for f in flist
+                ],
+                columns=CONFIG["meta_dims"] + ["fpath"],
+            )
+            .set_index(list(self.meta.keys()))
+            .sort_index()
         )
         # vispy
         self.data = (
@@ -91,7 +96,10 @@ class MainWindow(QMainWindow):
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
-        self.canvas = isoVis(data=self.data)
+        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"][0])
+        self.canvas = isoVis(
+            data=self.data, vid=self.vid, size=(CONFIG["width"], CONFIG["height"])
+        )
         self.canvas.create_native()
         self.canvas.native.setParent(self)
         # player
@@ -144,10 +152,13 @@ class MainWindow(QMainWindow):
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
+        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"][0])
         # vispy
         self.layout_master.removeWidget(self.canvas.native)
         self.canvas.native.close()
-        self.canvas = isoVis(data=self.data)
+        self.canvas = isoVis(
+            data=self.data, vid=self.vid, size=(CONFIG["width"], CONFIG["height"])
+        )
         self.canvas.create_native()
         self.canvas.native.setParent(self)
         self.layout_master.addWidget(self.canvas.native, 0, 0)
@@ -199,7 +210,7 @@ class MainWindow(QMainWindow):
 
 
 class isoVis(scene.SceneCanvas):
-    def __init__(self, data=None, *args, **kwargs) -> None:
+    def __init__(self, data, vid, *args, **kwargs) -> None:
         # init
         scene.SceneCanvas.__init__(self, *args, keys="interactive", **kwargs)
         self.unfreeze()
@@ -231,7 +242,6 @@ class isoVis(scene.SceneCanvas):
                 self.sct_data.iloc[0, :][["comp0", "comp1", "comp2"]].values, axis=0
             ),
             face_color=self.sct_data.iloc[0, :]["cstrong"],
-            size=20,
         )
         self.cur_mks.set_gl_state(depth_test=False)
         self.axes = scene.XYZAxis(parent=self.sct_view.scene, width=100)
@@ -241,10 +251,13 @@ class isoVis(scene.SceneCanvas):
         im_title.height_max = 30
         self.grid.add_widget(im_title, row=0, col=1)
         self.im_view = self.grid.add_view(row=1, col=1, border_color="white")
-        self.im_data = np.random.random(size=(len(self.sct_data), 100, 100))
-        self.im = scene.Image(parent=self.im_view.scene, data=self.im_data[0, :, :])
+        self.im_data = vid
+        fm0 = vid[0]
+        self.im = scene.Image(parent=self.im_view.scene, data=fm0)
         self.im_view.camera = "panzoom"
-        self.im_view.camera.rect = (0, 0, self.im_data.shape[1], self.im_data.shape[2])
+        self.im_view.camera.flip = (False, True, False)
+        self.im_view.camera.rect = (0, 0, fm0.shape[1], fm0.shape[0])
+        self.im_view.camera.aspect = 1
 
     def fm_change(self, ifm):
         self.cur_mks.set_data(
@@ -254,7 +267,7 @@ class isoVis(scene.SceneCanvas):
             ),
             face_color=self.sct_data.loc[ifm, "cstrong"],
         )
-        self.im.set_data(self.im_data[ifm, :, :])
+        self.im.set_data(self.im_data[ifm])
         self.update()
 
 
