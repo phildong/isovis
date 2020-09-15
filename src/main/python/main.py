@@ -253,7 +253,7 @@ class isoVis(scene.SceneCanvas):
         self.grid.add_widget(im_title, row=0, col=1)
         self.im_view = self.grid.add_view(row=1, col=1, border_color="white")
         self.im_data = vid
-        fm0 = vid[0]
+        fm0 = vid[int(self.sct_data.loc[0, CONFIG["col_names"]["frame"]])]
         self.im = scene.Image(parent=self.im_view.scene, data=fm0)
         self.im_view.camera = "panzoom"
         self.im_view.camera.flip = (False, True, False)
@@ -269,7 +269,9 @@ class isoVis(scene.SceneCanvas):
             ),
             face_color=self.sct_data.loc[ifm, "cstrong"],
         )
-        self.im.set_data(self.im_data[ifm])
+        self.im.set_data(
+            self.im_data[int(self.sct_data.loc[ifm, CONFIG["col_names"]["frame"]])]
+        )
         self.update()
 
 
