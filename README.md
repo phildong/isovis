@@ -1,6 +1,7 @@
+![isovis](isovis.gif)
+
 # isovis
 
-![isovis](isovis.gif)
 IsoVis is a simple tool to visualize arbitrary 3d point clouds together with corresponding video frames, intended to help neuroscientist to identify interesting clusters in 3d projection of neural activities (state space) that may correspond to behavior stereotypes.
 
 # installation
