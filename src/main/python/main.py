@@ -47,12 +47,14 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.timer_play)
         self.timer.start(int(1000 / CONFIG["fps"]))
         # load data
-        df = pd.read_feather(os.path.join(FPATH, CONFIG["df_path"])).astype(
-            {CONFIG["col_names"]["class"]: str}
+        df = (
+            pd.read_feather(os.path.join(FPATH, CONFIG["df_path"]))
+            .astype({CONFIG["col_names"]["class"]: str})
+            .astype({d: str for d in CONFIG["meta_dims"]})
         )
         # meta widgets
         layout_meta = QVBoxLayout()
-        self.metas = {d: df[d].unique() for d in CONFIG["meta_dims"]}
+        self.metas = {d: df[d].unique().astype(str) for d in CONFIG["meta_dims"]}
         self.meta = {d: v[0] for d, v in self.metas.items()}
         for dim, vals in self.metas.items():
             widget = QHBoxLayout()
@@ -76,16 +78,17 @@ class MainWindow(QMainWindow):
                 ],
             )
         )
+        self.meta_vid = list(flist[0].groupdict().keys())
         self.fdf = (
             pd.DataFrame(
                 [
-                    [f.group(d) for d in CONFIG["meta_dims"]]
+                    [f.group(d) for d in self.meta_vid]
                     + [os.path.join(CONFIG["vid_root"], f.string)]
                     for f in flist
                 ],
-                columns=CONFIG["meta_dims"] + ["fpath"],
+                columns=self.meta_vid + ["fpath"],
             )
-            .set_index(list(self.meta.keys()))
+            .set_index(self.meta_vid)
             .sort_index()
         )
         # vispy
@@ -96,7 +99,9 @@ class MainWindow(QMainWindow):
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
-        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"])
+        self.vid = pims.Video(
+            self.fdf.loc[tuple([self.meta[d] for d in self.meta_vid]), "fpath"]
+        )
         self.canvas = isoVis(
             data=self.data, vid=self.vid, size=(CONFIG["width"], CONFIG["height"])
         )
@@ -152,7 +157,9 @@ class MainWindow(QMainWindow):
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
-        self.vid = pims.Video(self.fdf.loc[tuple(self.meta.values()), "fpath"])
+        self.vid = pims.Video(
+            self.fdf.loc[tuple([self.meta[d] for d in self.meta_vid]), "fpath"]
+        )
         # vispy
         self.layout_master.removeWidget(self.canvas.native)
         self.canvas.native.close()
