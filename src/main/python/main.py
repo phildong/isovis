@@ -222,6 +222,12 @@ class isoVis(scene.SceneCanvas):
         scene.SceneCanvas.__init__(self, *args, keys="interactive", **kwargs)
         self.unfreeze()
         self.grid = self.central_widget.add_grid(margin=10)
+        cn = CONFIG["col_names"]
+        # normalize data
+        data_vals = data[[cn["x"], cn["y"], cn["z"]]].values
+        dmax = data_vals.max()
+        dmin = data_vals.min()
+        data[[cn["x"], cn["y"], cn["z"]]] = (data_vals - dmin) / (dmax - dmin)
         # color data
         col_cls = CONFIG["col_names"]["class"]
         data["cweak"] = data[col_cls].map(
@@ -236,12 +242,11 @@ class isoVis(scene.SceneCanvas):
         self.grid.add_widget(sct_title, row=0, col=0)
         self.sct_view = self.grid.add_view(row=1, col=0, border_color="white")
         self.sct_data = data
-        cn = CONFIG["col_names"]
         self.mks = scene.Markers(
             parent=self.sct_view.scene,
             pos=self.sct_data[[cn["x"], cn["y"], cn["z"]]].values,
             face_color=ColorArray(list(self.sct_data["cweak"].values)),
-            size=5,
+            size=4,
         )
         self.mks.attach(Alpha(0.8))
         self.cur_mks = scene.Markers(
@@ -250,6 +255,7 @@ class isoVis(scene.SceneCanvas):
                 self.sct_data.iloc[0, :][[cn["x"], cn["y"], cn["z"]]].values, axis=0
             ),
             face_color=self.sct_data.iloc[0, :]["cstrong"],
+            size=8,
         )
         self.cur_mks.set_gl_state(depth_test=False)
         self.axes = scene.XYZAxis(parent=self.sct_view.scene, width=100)
@@ -275,6 +281,7 @@ class isoVis(scene.SceneCanvas):
                 axis=0,
             ),
             face_color=self.sct_data.loc[ifm, "cstrong"],
+            size=8,
         )
         self.im.set_data(
             self.im_data[int(self.sct_data.loc[ifm, CONFIG["col_names"]["frame"]])]
