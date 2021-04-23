@@ -1,0 +1,21 @@
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - pip
+  - vispy
+  - pandas
+  - numpy
+  - pyarrow
+  - qdarkstyle
+  - pyqt
+  - bokeh
+  - av
+  - pims
+  - scikit-image
+  - jupyter
+  - black
+  - ffmpeg-python
+  - tqdm
+  - pip:
+    - fbs
