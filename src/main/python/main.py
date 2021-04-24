@@ -23,9 +23,11 @@ from PyQt5.QtWidgets import (
     QPushButton,
 )
 from vispy import scene
-from vispy.color import ColorArray
+from vispy.color import ColorArray, get_colormap
 from vispy.visuals.filters import Alpha
 from bokeh.palettes import Category20_20
+from matplotlib.colors import to_hex
+from matplotlib.cm import ScalarMappable
 
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
@@ -157,7 +159,7 @@ class MainWindow(QMainWindow):
             .sort_values(CONFIG["col_names"]["frame"])
             .reset_index(drop=True)
         )
-        self.vid = pims.Video(
+        self.vid = pims.PyAVReaderIndexed(
             self.fdf.loc[tuple([self.meta[d] for d in self.meta_vid]), "fpath"]
         )
         # vispy
@@ -230,12 +232,45 @@ class isoVis(scene.SceneCanvas):
         data[[cn["x"], cn["y"], cn["z"]]] = (data_vals - dmin) / (dmax - dmin)
         # color data
         col_cls = CONFIG["col_names"]["class"]
-        data["cweak"] = data[col_cls].map(
-            {k: v for k, v in zip(data[col_cls].unique(), cycle(Category20_20[0::2]))}
-        )
-        data["cstrong"] = data[col_cls].map(
-            {k: v for k, v in zip(data[col_cls].unique(), cycle(Category20_20[1::2]))}
-        )
+        col_cmap = CONFIG["col_names"].get("color", None)
+        cmaps = CONFIG.get("cmap", None)
+        if col_cmap is not None and cmaps is not None:
+            data["cweak"] = 0
+            data["cstrong"] = 0
+            if type(cmaps) is str:
+                pass
+            else:
+                for lab, cmap in cmaps.items():
+                    try:
+                        cm = ScalarMappable(cmap=cmap)
+                        data.loc[data[col_cls] == lab, "cweak"] = [
+                            to_hex(c)
+                            for c in cm.to_rgba(
+                                data.loc[data[col_cls] == lab, col_cmap]
+                            )
+                        ]
+                        data.loc[data[col_cls] == lab, "cstrong"] = [
+                            to_hex(c)
+                            for c in cm.to_rgba(
+                                data.loc[data[col_cls] == lab, col_cmap]
+                            )
+                        ]
+                    except ValueError:
+                        data.loc[data[col_cls] == lab, "cweak"] = cmap
+                        data.loc[data[col_cls] == lab, "cstrong"] = cmap
+        else:
+            data["cweak"] = data[col_cls].map(
+                {
+                    k: v
+                    for k, v in zip(data[col_cls].unique(), cycle(Category20_20[0::2]))
+                }
+            )
+            data["cstrong"] = data[col_cls].map(
+                {
+                    k: v
+                    for k, v in zip(data[col_cls].unique(), cycle(Category20_20[1::2]))
+                }
+            )
         # scatter plot
         sct_title = scene.Label("State Space", color="white")
         sct_title.height_max = 30
@@ -247,8 +282,9 @@ class isoVis(scene.SceneCanvas):
             pos=self.sct_data[[cn["x"], cn["y"], cn["z"]]].values,
             face_color=ColorArray(list(self.sct_data["cweak"].values)),
             size=4,
+            edge_width=0,
         )
-        self.mks.attach(Alpha(0.8))
+        self.mks.attach(Alpha(0.6))
         self.cur_mks = scene.Markers(
             parent=self.sct_view.scene,
             pos=np.expand_dims(
@@ -256,6 +292,7 @@ class isoVis(scene.SceneCanvas):
             ),
             face_color=self.sct_data.iloc[0, :]["cstrong"],
             size=8,
+            edge_color="white",
         )
         self.cur_mks.set_gl_state(depth_test=False)
         self.axes = scene.XYZAxis(parent=self.sct_view.scene, width=100)
@@ -282,6 +319,7 @@ class isoVis(scene.SceneCanvas):
             ),
             face_color=self.sct_data.loc[ifm, "cstrong"],
             size=8,
+            edge_color="white",
         )
         self.im.set_data(
             self.im_data[int(self.sct_data.loc[ifm, CONFIG["col_names"]["frame"]])]
