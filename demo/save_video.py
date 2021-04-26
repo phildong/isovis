@@ -56,6 +56,7 @@ class isoVis(scene.SceneCanvas):
         show_state=True,
         show_behav=True,
         colorize=True,
+        title_dict=dict(),
         *args,
         **kwargs
     ) -> None:
@@ -65,6 +66,7 @@ class isoVis(scene.SceneCanvas):
         self.grid = self.central_widget.add_grid(margin=10)
         self.show_behav = show_behav
         self.show_state = show_state
+        self.title_dict = title_dict
         data = data.copy()
         # color data
         col_cls = CONFIG["col_names"]["class"]
@@ -82,10 +84,15 @@ class isoVis(scene.SceneCanvas):
             data["cweak"] = "black"
             data["cstrong"] = "black"
         # scatter plot
-        # sct_title = scene.Label("State Space", color="white")
-        # sct_title.height_max = 30
-        # self.grid.add_widget(sct_title, row=0, col=0)
-        self.sct_view = self.grid.add_view(row=0, col=0, row_span=4)
+        rcount = 0
+        if show_state:
+            self.sct_title = scene.Label(
+                "State Space", color="black", face="Arial", bold=True, font_size=40
+            )
+            self.grid.add_widget(self.sct_title, row=rcount, col=0)
+            rcount += 1
+        self.sct_view = self.grid.add_view(row=rcount, col=0, row_span=8)
+        rcount += 8
         self.sct_data = data
         cn = CONFIG["col_names"]
         self.mks = scene.Markers(parent=self.sct_view.scene)
@@ -105,8 +112,6 @@ class isoVis(scene.SceneCanvas):
         #     width=10,
         # )
         self.mks.attach(Alpha(0.9))
-        # self.mks.set_gl_state("translucent", blend=True, depth_test=True)
-
         if self.show_state:
             self.cur_mks = scene.Markers(parent=self.sct_view.scene)
             self.cur_mks.set_gl_state(depth_test=False)
@@ -127,10 +132,10 @@ class isoVis(scene.SceneCanvas):
         )
         # behav cam
         if self.show_behav:
-            # im_title = scene.Label("Behavior Image", color="white")
-            # im_title.height_max = 30
-            # self.grid.add_widget(im_title, row=1, col=0)
-            self.im_view = self.grid.add_view(row=4, col=0, border_color="white")
+            self.im_view = self.grid.add_view(
+                row=rcount, col=0, row_span=2, border_color="white"
+            )
+            rcount += 1
             self.im_data = vid
             fm0 = vid[int(self.sct_data.loc[0, CONFIG["col_names"]["frame"]])]
             self.im = scene.Image(parent=self.im_view.scene, data=fm0)
@@ -141,22 +146,24 @@ class isoVis(scene.SceneCanvas):
 
     def fm_change(self, ifm):
         cn = CONFIG["col_names"]
+        cur_row = self.sct_data.loc[ifm]
         if self.show_state:
             self.cur_mks.set_data(
                 pos=np.expand_dims(
-                    self.sct_data.loc[ifm, [cn["x"], cn["y"], cn["z"]]].values,
+                    np.array([cur_row[cn["x"]], cur_row[cn["y"]], cur_row[cn["z"]]]),
                     axis=0,
                 ),
-                face_color=self.sct_data.loc[ifm, "cstrong"],
+                face_color=cur_row["cstrong"],
                 size=20,
                 edge_width=2,
                 edge_color="black",
                 scaling=False,
             )
+            lb = cur_row[cn["class"]]
+            self.sct_title.text = self.title_dict.get(lb, lb)
+            self.sct_title._text_visual.color = cur_row["cstrong"]
         if self.show_behav:
-            self.im.set_data(
-                self.im_data[int(self.sct_data.loc[ifm, CONFIG["col_names"]["frame"]])]
-            )
+            self.im.set_data(self.im_data[int(cur_row[cn["frame"]])])
         self.update()
 
 
@@ -179,6 +186,7 @@ isovis = isoVis(
     vid,
     show_behav=False,
     colorize=False,
+    show_state=False,
     bgcolor="white",
     size=(CONFIG["width"], CONFIG["height"]),
     app="pyqt5",
@@ -210,9 +218,10 @@ fname = "cluster.mp4"
 # rename_dict = {"turn_left": "drink_left", "turn_right": "drink_right"}
 nsmp = {"drink_left": 150, "drink_right": 150, "run_left": 400, "run_right": 400}
 stp = {"drink_left": 1, "drink_right": 1, "run_left": 2, "run_right": 2}
+transition_sigma = 10
 view_ele_offset = 10
 view_azi_offset = 8
-view_dist_offset = 0.8
+view_dist_offset = 0.7
 # proj_sub["state"] = proj_sub["state"].map(lambda k: rename_dict.get(k, k))
 process = (
     ffmpeg.input(
@@ -231,6 +240,12 @@ isovis = isoVis(
     show_behav=True,
     colorize=True,
     bgcolor="white",
+    title_dict={
+        "drink_left": "Drinking Left",
+        "drink_right": "Drinking Right",
+        "run_left": "Running Left",
+        "run_right": "Running Right",
+    },
     size=(CONFIG["width"], CONFIG["height"]),
     app="pyqt5",
 )
@@ -251,18 +266,30 @@ for st, st_df in proj_sub.groupby("state"):
     a0, a1 = sorted([a0, a1], key=lambda aa: np.abs(aa - last_ang))
     last_ang = a1
     subdf["azi"] = np.linspace(a0, a1, len(subdf))
-    subdf["ele"] = np.sign(e) * (np.abs(e) - view_ele_offset)
+    subdf["ele"] = np.sign(e) * np.clip(np.abs(e) - view_ele_offset, 0, 90)
     subdf["view_dist"] = view_dist
+    subdf["tt_opacity"] = 1
+    subdf.tt_opacity.iloc[:transition_sigma] = 0
+    subdf.tt_opacity.iloc[-transition_sigma:] = 0
     plan_ls.append(subdf)
 plan_df = pd.concat(plan_ls)
-plan_df["azi"] = gaussian_filter1d(plan_df["azi"], 10)
-plan_df["ele"] = gaussian_filter1d(plan_df["ele"], 10)
-plan_df["view_dist"] = gaussian_filter1d(plan_df["view_dist"], 10)
+plan_df["azi"] = gaussian_filter1d(plan_df["azi"], transition_sigma)
+plan_df["ele"] = gaussian_filter1d(plan_df["ele"], transition_sigma)
+plan_df["view_dist"] = gaussian_filter1d(plan_df["view_dist"], transition_sigma)
+plan_df["tt_opacity"] = gaussian_filter1d(
+    plan_df["tt_opacity"].astype(float), transition_sigma
+)
 for ir, row in tqdm(plan_df.iterrows()):
     isovis.sct_view.camera.azimuth = row["azi"]
     isovis.sct_view.camera.elevation = row["ele"]
     isovis.sct_view.camera.distance = row["view_dist"] + view_dist_offset
     isovis.sct_view.camera.view_changed()
+    try:
+        isovis.sct_title._text_visual.detach(ft)
+    except (NameError, ValueError):
+        pass
+    ft = Alpha(row["tt_opacity"])
+    isovis.sct_title._text_visual.attach(ft)
     isovis.fm_change(ir)
     im = isovis.render()
     process.stdin.write(im.tobytes())
